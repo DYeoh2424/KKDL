@@ -3,470 +3,586 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>酷酷的蓝比赛专用 - 点数版</title>
+    <title>酷酷的蓝比赛专用</title>
     <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: "Microsoft YaHei", sans-serif; }
         :root {
-            --darkest: #0a2b1e;
-            --darker: #0f3d2c;
-            --dark: #14523d;
-            --dark-row: #0f402e;
-            --accent: #22c55e;
-            --accent-light: #86efac;
+            --bg-main: #052b1a;
+            --panel-bg: #0a3d28;
+            --panel-border: #22c55e;
             --text: #ffffff;
-            --muted: #88c9a8;
-            --btn-plus: #22c55e;
+            --text-dim: #99ccaa;
             --btn-minus: #ef4444;
-            --highlight-bg: #423d10;
-            --border-hl: #facc15;
-            --yellow: #facc15;
-            --red: #ef4444;
-            --green: #22c55e;
+            --btn-plus: #22c55e;
+            --btn-clear: #ef4444;
+            --input-bg: #052b1a;
+            --input-border: #22c55e;
+            --row-even: #0f4d34;
+            --row-odd: #0a3d28;
+            --red: #ff6666;
+            --green: #66ff66;
+            --highlight: #155e3a;
         }
-        html, body {
-            background: var(--darkest);
+        body {
+            background: var(--bg-main);
             color: var(--text);
             min-height: 100vh;
-            overflow-y: auto;
+            padding: 16px;
         }
-        header {
-            background: var(--darker);
-            padding: 14px 24px;
-            border-bottom: 2px solid var(--accent);
-            position: sticky;
-            top: 0;
-            z-index: 50;
+        .page-title {
+            text-align: center;
+            font-size: 1.5rem;
+            margin-bottom: 16px;
+            color: var(--panel-border);
         }
-        .header-title { font-size: 1.5rem; color: var(--accent-light); font-weight: bold; text-align: center; }
-        main {
-            display: flex;
-            flex-wrap: wrap;
-            padding: 20px;
-            gap: 24px;
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
         }
         .panel {
-            background: var(--darker);
-            border-radius: 16px;
-            padding: 24px;
-            border: 1px solid var(--dark);
-            flex: 1 1 520px;
+            background: var(--panel-bg);
+            border: 2px solid var(--panel-border);
+            border-radius: 12px;
+            padding: 20px;
+        }
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
         }
         .panel-title {
-            font-size: 1.3rem;
-            color: var(--accent-light);
-            margin-bottom: 20px;
-            font-weight: bold;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 10px;
+            font-size: 1.25rem;
+            color: var(--panel-border);
         }
         .clear-btn {
-            padding: 6px 14px;
-            background: var(--btn-minus);
-            border: none;
-            border-radius: 6px;
+            background: var(--btn-clear);
             color: white;
+            border: none;
+            padding: 6px 16px;
+            border-radius: 6px;
             cursor: pointer;
             font-size: 0.9rem;
         }
-        .gift-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
-        .gift-row {
-            background: var(--dark);
-            border-radius: 12px;
-            padding: 12px 14px;
+        .gift-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .gift-item {
             display: flex;
             align-items: center;
             gap: 8px;
-            transition: all 0.2s;
-            flex-wrap: wrap;
-        }
-        .gift-row.highlighted {
-            background: var(--highlight-bg);
-            border: 1px solid var(--border-hl);
-            box-shadow: 0 0 8px rgba(250, 204, 21, 0.25);
+            background: var(--row-odd);
+            padding: 10px 12px;
+            border-radius: 8px;
         }
         .mark-btn {
-            width: 26px; height: 26px; border-radius: 50%; border: none;
-            background: #1e3a30; color: #777; cursor: pointer;
-            font-weight: bold; font-size: 14px;
-            display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: none;
+            background: #1a5238;
+            color: var(--panel-border);
+            font-weight: bold;
+            cursor: pointer;
+            flex-shrink: 0;
         }
-        .mark-btn.active { background: var(--yellow); color: #000; }
-        .gift-name { flex: 1; font-size: 1rem; display: flex; align-items: center; gap: 4px; white-space: nowrap; }
-        .gift-points { font-size: 0.85rem; color: var(--muted); margin-left: 4px; }
-        .emoji { font-size: 1.15rem; }
+        .gift-name {
+            flex: 1;
+            font-size: 1rem;
+        }
         .qty-input {
-            width: 80px; padding: 8px 6px;
-            background: var(--darkest); border: 2px solid var(--accent);
-            color: var(--text); border-radius: 6px;
-            text-align: center; font-size: 1rem;
-            -moz-appearance: textfield; outline: none;
+            width: 50px;
+            padding: 6px;
+            text-align: center;
+            background: var(--input-bg);
+            border: 2px solid var(--input-border);
+            color: white;
+            border-radius: 6px;
+            font-size: 1rem;
         }
-        .qty-input::-webkit-outer-spin-button,
-        .qty-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-        .btn-group { display: flex; gap: 4px; margin-left: 4px; }
-        .btn-round {
-            width: 30px; height: 30px; border-radius: 50%; border: none;
-            color: white; font-size: 1rem; font-weight: bold; cursor: pointer;
-            display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+        .qty-btn {
+            width: 32px;
+            height: 32px;
+            border: none;
+            border-radius: 6px;
+            color: white;
+            font-size: 1rem;
+            cursor: pointer;
+            margin-left: 4px;
         }
-        .btn-plus { background: var(--btn-plus); }
-        .btn-minus { background: var(--btn-minus); }
-        .total-box {
-            margin-top: 18px; padding: 14px 20px;
-            background: var(--dark); border-radius: 10px;
-            font-size: 1.15rem; font-weight: bold;
-            display: flex; justify-content: space-between; align-items: center;
-            border: 2px solid var(--accent);
+        .minus { background: var(--btn-minus); }
+        .plus { background: var(--btn-plus); }
+        .total-row {
+            background: var(--highlight);
+            padding: 14px 16px;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            border: 2px solid var(--panel-border);
         }
-        .goals-section { margin-top: 18px; display: flex; flex-direction: column; gap: 10px; }
-        .goals-title { font-size: 1.1rem; color: var(--accent-light); font-weight: bold; margin-bottom: 4px; }
+        .goals-section h3 {
+            color: var(--panel-border);
+            margin-bottom: 12px;
+            font-size: 1rem;
+        }
         .goal-row {
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 12px 16px; background: var(--dark); border-radius: 8px;
-            transition: all 0.3s; flex-wrap: wrap; gap: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 0;
+            border-bottom: 1px solid #1a5238;
         }
-        .goal-row.unlocked { background: #166534; border: 1px solid #22c55e; }
-        .goal-name { font-size: 0.95rem; }
-        .goal-name input {
-            background: transparent; border: none; color: var(--text);
-            font-size: 0.95rem; outline: none; width: 110px;
+        .goal-name { flex: 1; }
+        .goal-input {
+            width: 120px;
+            padding: 6px;
+            background: var(--input-bg);
+            border: 1px solid var(--input-border);
+            color: white;
+            border-radius: 4px;
+            text-align: center;
         }
-        .goal-target { text-align: center; color: var(--text); font-weight: 500; }
-        .goal-target input {
-            background: var(--darkest); border: 1px solid #2a7a5c;
-            color: var(--text); text-align: center; width: 120px;
-            padding: 4px 6px; border-radius: 4px; font-size: 0.95rem;
+        .goal-diff {
+            width: 100px;
+            text-align: right;
+            font-weight: bold;
         }
-        .goal-diff { font-weight: bold; text-align: right; }
-        .goal-diff.negative { color: var(--red); }
-        .goal-diff.unlocked-text { color: var(--green); font-weight: bold; }
+        .diff-negative { color: var(--red); }
+        .diff-positive { color: var(--green); }
         .add-goal-btn {
-            margin-top: 8px; padding: 8px 14px;
-            background: var(--dark); border: 1px solid var(--accent);
-            color: var(--text); border-radius: 6px; cursor: pointer;
-            align-self: flex-start;
+            margin-top: 12px;
+            background: var(--btn-plus);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
         }
-        .delete-goal-btn {
-            background: transparent; border: none; color: var(--muted);
-            cursor: pointer; margin-left: 8px; font-size: 1rem;
+        /* 档位周边 Panel */
+        .toggle-row {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 12px;
         }
-        .sync-indicator {
-            position: fixed; top: 10px; right: 10px;
-            background: var(--accent); color: #000; padding: 6px 12px;
-            border-radius: 20px; font-size: 0.85rem; font-weight: bold; z-index: 1000;
+        .toggle-option {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
         }
-        .sync-indicator.offline { background: var(--yellow); }
-        .sync-indicator.error { background: var(--red); color: white; }
-        .update-banner {
-            position: fixed; top: 0; left: 0; right: 0;
-            background: var(--yellow); color: #000; padding: 10px;
-            text-align: center; font-weight: bold; z-index: 999; display: none;
+        .select-label {
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+            color: var(--text-dim);
         }
-        .update-banner button {
-            margin-left: 10px; padding: 5px 15px;
-            background: var(--green); color: white; border: none;
-            border-radius: 4px; cursor: pointer; font-weight: bold;
+        .gift-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 20px;
         }
-        .right-panel { display: none; }
+        .gift-tag {
+            background: var(--highlight);
+            border: 1px solid var(--panel-border);
+            padding: 6px 12px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        .gift-tag.selected {
+            background: var(--panel-border);
+            color: #000;
+        }
+        .peripheral-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .peripheral-table th,
+        .peripheral-table td {
+            padding: 10px 12px;
+            text-align: left;
+            border-bottom: 1px solid #1a5238;
+        }
+        .peripheral-table th {
+            color: var(--panel-border);
+        }
+        .sync-status {
+            position: fixed; top: 8px; right: 8px;
+            background: var(--highlight);
+            color: var(--panel-border);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            z-index: 100;
+        }
     </style>
 </head>
 <body>
-    <div class="update-banner" id="updateBanner">
-        🆕 New version available!
-        <button onclick="location.reload()">Refresh Now</button>
-    </div>
-    <div class="sync-indicator" id="syncIndicator">⚡ Connecting...</div>
+    <div class="sync-status" id="syncStatus">⚡ 连接中...</div>
 
-    <header>
-        <h1 class="header-title">🏁 酷酷的蓝比赛专用 — 点数统计</h1>
-    </header>
+    <h1 class="page-title">🏁 酷酷的蓝比赛专用</h1>
 
-    <main>
-        <div class="panel left-panel" style="max-width: 800px; margin: 0 auto;">
-            <h2 class="panel-title">
-                礼物清单
-                <button class="clear-btn" onclick="clearAllGifts()">🗑️ 一键清空</button>
-            </h2>
+    <div class="container">
+        <!-- 礼物清单 Panel -->
+        <div class="panel">
+            <div class="panel-header">
+                <h2 class="panel-title">礼物清单</h2>
+                <button class="clear-btn" onclick="clearAll()">🗑️ 一键清空</button>
+            </div>
+
             <div class="gift-grid" id="giftGrid"></div>
-            <div class="total-box">
-                <span>总点数</span>
+
+            <div class="total-row">
+                <span>总值</span>
                 <span id="grandTotal">0.0</span>
             </div>
+
             <div class="goals-section">
-                <h3 class="goals-title">目标（点数）</h3>
-                <div id="goalsContainer"></div>
-                <button class="add-goal-btn" onclick="addGoalRow()">+ 添加目标</button>
+                <h3>目标</h3>
+                <div id="goalsContainer">
+                    <div class="goal-row">
+                        <span class="goal-name">爱心手幅</span>
+                        <input type="number" step="0.1" class="goal-input" value="888.0">
+                        <span class="goal-diff diff-negative">-888.0</span>
+                    </div>
+                    <div class="goal-row">
+                        <span class="goal-name">吧唧</span>
+                        <input type="number" step="0.1" class="goal-input" value="1888.0">
+                        <span class="goal-diff diff-negative">-1888.0</span>
+                    </div>
+                    <div class="goal-row">
+                        <span class="goal-name">眼睛条</span>
+                        <input type="number" step="0.1" class="goal-input" value="2888.0">
+                        <span class="goal-diff diff-negative">-2888.0</span>
+                    </div>
+                </div>
+                <button class="add-goal-btn" onclick="addGoal()">+ 添加目标</button>
             </div>
         </div>
-    </main>
+
+        <!-- 档位周边 Panel -->
+        <div class="panel">
+            <h2 class="panel-title" style="margin-bottom: 16px;">档位周边</h2>
+
+            <div class="toggle-row">
+                <label class="toggle-option">
+                    <input type="radio" name="mode" value="min" checked onchange="updateMode()">
+                    最少礼物数
+                </label>
+                <label class="toggle-option">
+                    <input type="radio" name="mode" value="variety" onchange="updateMode()">
+                    最多礼物种类
+                </label>
+            </div>
+
+            <div class="select-label">包含礼物 (点击选择/取消):</div>
+            <div class="gift-tags" id="giftTags"></div>
+
+            <table class="peripheral-table">
+                <thead>
+                    <tr>
+                        <th>档位</th>
+                        <th>所需点数</th>
+                        <th>可获得周边</th>
+                        <th>礼物组合</th>
+                    </tr>
+                </thead>
+                <tbody id="peripheralBody">
+                    <!-- Filled by JS -->
+                </tbody>
+            </table>
+        </div>
+    </div>
 
     <script>
         // ==================================================
-        // 🔴 PASTE YOUR FIREBASE CONFIG HERE 🔴
+        // 🔴 YOUR FIREBASE CONFIG
         // ==================================================
         const firebaseConfig = {
-          apiKey: "AIzaSyDUMKaG-iq6gSiVGnkWK7Aexf6A-6LvrKk",
-          authDomain: "kkdl-856f4.firebaseapp.com",
-          databaseURL: "https://kkdl-856f4.asia-southeast1.firebasedatabase.app",
-          projectId: "kkdl-856f4",
-          storageBucket: "kkdl-856f4.appspot.com",
-          messagingSenderId: "1058958114658",
-          appId: "1:1058958114658:web:c7ff68bc22e3ac5ea7b63b"
+            apiKey: "AIzaSyDUMKaG-iq6gSiVGnkWK7Aexf6A-6LvrKk",
+            authDomain: "kkdl-856f4.firebaseapp.com",
+            databaseURL: "https://kkdl-856f4.asia-southeast1.firebasedatabase.app",
+            projectId: "kkdl-856f4",
+            storageBucket: "kkdl-856f4.appspot.com",
+            messagingSenderId: "1058958114658",
+            appId: "1:1058958114658:web:c7ff68bc22e3ac5ea7b63b"
         };
         // ==================================================
 
-        // Initialize Firebase
+        // Init Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
-        const stateRef = db.ref('shared_state');
+        const stateRef = db.ref('kkdl_state');
 
-        // ============== 礼物点数表 ==============
+        // ===== GIFT DATA — exact names & point values =====
         const gifts = [
-            { name: "兔兔", emoji: "🐰", points: 0.3 },
-            { name: "宝箱", emoji: "🎁", points: 0.6 },
-            { name: "跑车", emoji: "🚗", points: 1.2 },
-            { name: "飞机", emoji: "✈️", points: 3.0 },
-            { name: "邮轮", emoji: "🚢", points: 6.0 },
-            { name: "火箭", emoji: "🚀", points: 10.0 },
-            { name: "地雷", emoji: "💫", points: 18.8 },
-            { name: "飞艇", emoji: "🛸", points: 20.0 },
-            { name: "华华", emoji: "❀", points: 30.0 },
-            { name: "10w+", emoji: "💎", points: 100.0 }
+            { id: 'rabbit', name: '兔兔', emoji: '🐰', points: 0.3 },
+            { id: 'box', name: '箱箱', emoji: '🎁', points: 0.6 },
+            { id: 'car', name: '车车', emoji: '🚗', points: 1.2 },
+            { id: 'plane', name: '飞飞', emoji: '✈️', points: 3.0 },
+            { id: 'ship', name: '船船', emoji: '🚢', points: 6.0 },
+            { id: 'rocket', name: '火箭', emoji: '🚀', points: 10.0 },
+            { id: 'mine', name: '地雷', emoji: '💫', points: 18.8 },
+            { id: 'boat', name: '艇艇', emoji: '🛸', points: 20.0 },
+            { id: 'flower', name: '华华', emoji: '❀', points: 30.0 },
+            { id: 'big', name: '10w+', emoji: '💎', points: 100.0 }
         ];
 
-        let goals = [
-            { id: 1, name: "目标1", target: 500.0 },
-            { id: 2, name: "目标2", target: 1000.0 },
-            { id: 3, name: "目标3", target: 2000.0 }
+        // ===== 档位周边 =====
+        const tiers = [
+            { tier: 10, required: 100.0, reward: '徽章、立牌等' },
+            { tier: 20, required: 300.0, reward: '徽章、立牌等' },
+            { tier: 40, required: 500.0, reward: '徽章、立牌等' },
+            { tier: 66, required: 800.0, reward: '徽章、立牌等' }
         ];
-        let nextGoalId = 4;
 
+        // State
         let quantities = {};
         let highlighted = {};
+        let selectedGifts = {};
+        let goals = [
+            { name: '爱心手幅', value: 888.0 },
+            { name: '吧唧', value: 1888.0 },
+            { name: '眼睛条', value: 2888.0 }
+        ];
+        let mode = 'min'; // 'min' or 'variety'
+        let localUpdate = false;
+
+        // Init defaults
         gifts.forEach(g => {
-            quantities[g.name] = 0;
-            highlighted[g.name] = false;
+            quantities[g.id] = 0;
+            highlighted[g.id] = false;
+            selectedGifts[g.id] = true;
         });
 
-        let isSyncing = false;
-        let localSaveTimeout = null;
-
-        // ============== 同步状态 ==============
-        function updateSyncStatus(status, text) {
-            const el = document.getElementById('syncIndicator');
-            el.className = 'sync-indicator ' + (status === 'online' ? '' : status);
-            el.textContent = text;
+        // Format: 1 decimal place
+        function formatPoints(num) {
+            return num.toFixed(1);
         }
 
-        function pushStateToFirebase() {
-            if (isSyncing) return;
-            clearTimeout(localSaveTimeout);
-            localSaveTimeout = setTimeout(() => {
-                const state = {
-                    quantities, highlighted, goals, nextGoalId,
-                    _ts: firebase.database.ServerValue.TIMESTAMP
-                };
-                stateRef.set(state).catch(err => {
-                    console.error('Sync error:', err);
-                    updateSyncStatus('error', '❌ Sync Error');
-                });
-            }, 300);
+        // Total points
+        function getTotalPoints() {
+            return gifts.reduce((sum, g) => sum + g.points * quantities[g.id], 0);
         }
 
-        stateRef.on('value', (snapshot) => {
-            const data = snapshot.val();
+        // Sync status
+        function setSyncStatus(text) {
+            document.getElementById('syncStatus').textContent = text;
+        }
+
+        // Push to Firebase
+        function pushState() {
+            localUpdate = true;
+            stateRef.set({ quantities, highlighted, selectedGifts, goals, mode })
+                .then(() => setSyncStatus('⚡ 实时同步'))
+                .catch(() => setSyncStatus('⚠️ 同步失败'));
+            setTimeout(() => localUpdate = false, 500);
+        }
+
+        // Listen from Firebase
+        stateRef.on('value', (snap) => {
+            const data = snap.val();
             if (!data) {
-                updateSyncStatus('online', '⚡ Live Sync');
+                setSyncStatus('⚡ 就绪');
+                renderAll();
                 return;
             }
-            isSyncing = true;
-            try {
-                quantities = data.quantities || quantities;
-                highlighted = data.highlighted || highlighted;
-                goals = data.goals || goals;
-                nextGoalId = data.nextGoalId || nextGoalId;
-                fullRender();
-                updateSyncStatus('online', '⚡ Live Sync');
-            } catch (e) {
-                console.error('Load error:', e);
+            setSyncStatus('⚡ 实时同步');
+
+            if (!localUpdate) {
+                if (data.quantities) quantities = data.quantities;
+                if (data.highlighted) highlighted = data.highlighted;
+                if (data.selectedGifts) selectedGifts = data.selectedGifts;
+                if (data.goals) goals = data.goals;
+                if (data.mode) mode = data.mode;
             }
-            isSyncing = false;
-        }, (err) => {
-            updateSyncStatus('error', '❌ Disconnected');
+            renderAll();
         });
 
-        db.ref('.info/connected').on('value', (snap) => {
-            updateSyncStatus(snap.val() ? 'online' : 'offline', snap.val() ? '⚡ Live Sync' : '⏳ Offline...');
-        });
-
-        // ============== 计算总点数 ==============
-        function getTotalPoints() {
-            let total = 0;
-            gifts.forEach(g => {
-                total += g.points * (quantities[g.name] || 0);
-            });
-            return total;
-        }
-
-        function formatPoints(num) {
-            return num.toFixed(2);
-        }
-
-        function updateGrandTotal() {
-            document.getElementById("grandTotal").textContent = formatPoints(getTotalPoints());
-        }
-
-        // ============== 渲染 ==============
-        function fullRender() {
-            renderGiftGrid();
-            updateGrandTotal();
-            renderGoals(getTotalPoints());
-        }
-
-        function clearAllGifts() {
-            gifts.forEach(g => quantities[g.name] = 0);
-            pushStateToFirebase();
-            fullRender();
-        }
-
-        function renderGiftGrid() {
-            const grid = document.getElementById("giftGrid");
-            if (grid.children.length === 0) {
-                gifts.forEach(gift => {
-                    const row = document.createElement("div");
-                    row.className = `gift-row`;
-                    row.id = `row-${gift.name}`;
-                    row.innerHTML = `
-                        <button class="mark-btn" id="mark-${gift.name}">!</button>
-                        <span class="gift-name">
-                            <span class="emoji">${gift.emoji}</span>
-                            <span>${gift.name}</span>
-                            <span class="gift-points">(${gift.points}点)</span>
-                        </span>
-                        <input type="number" class="qty-input" id="qty-${gift.name}"
-                               min="0" max="9999">
-                        <div class="btn-group">
-                            <button class="btn-round btn-minus">−</button>
-                            <button class="btn-round btn-plus">+</button>
-                        </div>
-                    `;
-                    grid.appendChild(row);
-
-                    const input = row.querySelector(`#qty-${gift.name}`);
-                    input.addEventListener('input', (e) => {
-                        let val = e.target.value;
-                        quantities[gift.name] = val === '' || val === null ? 0 : Math.max(0, Math.min(9999, parseInt(val) || 0));
-                        updateGrandTotal();
-                        renderGoals(getTotalPoints());
-                        pushStateToFirebase();
-                    });
-
-                    row.querySelector('.btn-minus').addEventListener('click', () => {
-                        quantities[gift.name] = Math.max(0, (quantities[gift.name] || 0) - 1);
-                        pushStateToFirebase();
-                        fullRender();
-                    });
-                    row.querySelector('.btn-plus').addEventListener('click', () => {
-                        quantities[gift.name] = Math.min(9999, (quantities[gift.name] || 0) + 1);
-                        pushStateToFirebase();
-                        fullRender();
-                    });
-                    row.querySelector('.mark-btn').addEventListener('click', () => {
-                        highlighted[gift.name] = !highlighted[gift.name];
-                        pushStateToFirebase();
-                        fullRender();
-                    });
-                });
+        // Calculate gift combination display
+        function getComboText() {
+            const selected = gifts.filter(g => selectedGifts[g.id]);
+            if (mode === 'min') {
+                // Show least number to reach total
+                let rem = getTotalPoints();
+                const used = [];
+                for (const g of [...selected].sort((a,b)=>b.points-a.points)) {
+                    const n = Math.floor(rem / g.points);
+                    if (n > 0) {
+                        used.push(`${n}${g.emoji}`);
+                        rem -= n * g.points;
+                    }
+                }
+                return used.join(', ') || '-';
+            } else {
+                // Show variety
+                return selected.map(g => g.emoji).join(' ') || '-';
             }
+        }
+
+        // Render gift grid
+        function renderGifts() {
+            const grid = document.getElementById('giftGrid');
+            grid.innerHTML = '';
 
             gifts.forEach(gift => {
-                const row = document.getElementById(`row-${gift.name}`);
-                const markBtn = document.getElementById(`mark-${gift.name}`);
-                const input = document.getElementById(`qty-${gift.name}`);
-                const targetVal = quantities[gift.name] || 0;
-                const current = parseInt(input.value) || 0;
+                const item = document.createElement('div');
+                item.className = `gift-item ${highlighted[gift.id] ? 'highlighted' : ''}`;
+                item.innerHTML = `
+                    <button class="mark-btn" data-id="${gift.id}">!</button>
+                    <span class="gift-name">${gift.emoji} ${gift.name}</span>
+                    <input type="number" class="qty-input" id="qty-${gift.id}" 
+                           value="${quantities[gift.id]}" min="0">
+                    <button class="qty-btn minus" data-id="${gift.id}" data-action="minus">−</button>
+                    <button class="qty-btn plus" data-id="${gift.id}" data-action="plus">+</button>
+                `;
+                grid.appendChild(item);
+            });
 
-                if (current !== targetVal && document.activeElement !== input) {
-                    input.value = targetVal;
-                }
-                row.classList.toggle('highlighted', highlighted[gift.name]);
-                markBtn.classList.toggle('active', highlighted[gift.name]);
+            // Mark buttons
+            grid.querySelectorAll('.mark-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const id = btn.dataset.id;
+                    highlighted[id] = !highlighted[id];
+                    pushState();
+                });
+            });
+
+            // +/- buttons
+            grid.querySelectorAll('.qty-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const id = btn.dataset.id;
+                    if (btn.dataset.action === 'plus') quantities[id]++;
+                    else quantities[id] = Math.max(0, quantities[id] - 1);
+                    pushState();
+                });
+            });
+
+            // Direct input
+            grid.querySelectorAll('.qty-input').forEach(input => {
+                input.addEventListener('change', () => {
+                    const id = input.id.replace('qty-', '');
+                    quantities[id] = Math.max(0, parseInt(input.value) || 0);
+                    input.value = quantities[id];
+                    pushState();
+                });
             });
         }
 
-        function renderGoals(total) {
-            const container = document.getElementById("goalsContainer");
-            container.innerHTML = "";
-            goals.forEach(goal => {
-                const isUnlocked = total >= goal.target;
-                const diff = goal.target - total;
-                const row = document.createElement("div");
-                row.className = `goal-row ${isUnlocked ? "unlocked" : ""}`;
+        // Render gift tags
+        function renderTags() {
+            const container = document.getElementById('giftTags');
+            container.innerHTML = '';
+
+            gifts.forEach(gift => {
+                const tag = document.createElement('span');
+                tag.className = `gift-tag ${selectedGifts[gift.id] ? 'selected' : ''}`;
+                tag.textContent = `${gift.emoji} ${gift.name}`;
+                tag.addEventListener('click', () => {
+                    selectedGifts[gift.id] = !selectedGifts[gift.id];
+                    pushState();
+                });
+                container.appendChild(tag);
+            });
+        }
+
+        // Render goals
+        function renderGoals() {
+            const container = document.getElementById('goalsContainer');
+            container.innerHTML = '';
+            const total = getTotalPoints();
+
+            goals.forEach((goal, idx) => {
+                const diff = goal.value - total;
+                const row = document.createElement('div');
+                row.className = 'goal-row';
                 row.innerHTML = `
-                    <span class="goal-name">
-                        <input type="text" value="${goal.name}" data-id="${goal.id}">
-                        ${goals.length > 1 ? `<button class="delete-goal-btn" data-id="${goal.id}">✕</button>` : ""}
-                    </span>
-                    <span class="goal-target">
-                        <input type="number" step="0.01" value="${goal.target}" data-id="${goal.id}">
-                    </span>
-                    <span class="goal-diff ${isUnlocked ? "unlocked-text" : "negative"}">
-                        ${isUnlocked ? "已解锁 ✅" : `−${formatPoints(diff)}`}
+                    <span class="goal-name">${goal.name}</span>
+                    <input type="number" step="0.1" class="goal-input" value="${goal.value}" 
+                           data-idx="${idx}">
+                    <span class="goal-diff ${diff <= 0 ? 'diff-positive' : 'diff-negative'}">
+                        ${diff <= 0 ? '+' : ''}${formatPoints(Math.abs(diff))}
                     </span>
                 `;
                 container.appendChild(row);
             });
 
-            container.querySelectorAll('.goal-name input').forEach(inp => {
-                inp.addEventListener('change', (e) => {
-                    const g = goals.find(x => x.id === parseInt(e.target.dataset.id));
-                    if (g) { g.name = e.target.value; pushStateToFirebase(); }
-                });
-            });
-            container.querySelectorAll('.goal-target input').forEach(inp => {
-                inp.addEventListener('change', (e) => {
-                    const g = goals.find(x => x.id === parseInt(e.target.dataset.id));
-                    if (g) { g.target = Math.max(0, parseFloat(e.target.value) || 0); pushStateToFirebase(); renderGoals(getTotalPoints()); }
-                });
-            });
-            container.querySelectorAll('.delete-goal-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    goals = goals.filter(x => x.id !== parseInt(btn.dataset.id));
-                    pushStateToFirebase(); renderGoals(getTotalPoints());
+            container.querySelectorAll('.goal-input').forEach(input => {
+                input.addEventListener('change', () => {
+                    const idx = parseInt(input.dataset.idx);
+                    goals[idx].value = parseFloat(input.value) || 0;
+                    pushState();
                 });
             });
         }
 
-        function addGoalRow() {
-            goals.push({ id: nextGoalId++, name: "新目标", target: 0.0 });
-            pushStateToFirebase();
-            renderGoals(getTotalPoints());
+        // Render peripheral table
+        function renderPeripherals() {
+            const tbody = document.getElementById('peripheralBody');
+            tbody.innerHTML = '';
+            const total = getTotalPoints();
+            const comboText = getComboText();
+
+            tiers.forEach(tier => {
+                const achieved = total >= tier.required;
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${tier.tier}</td>
+                    <td style="color:${achieved ? 'var(--green)' : 'inherit'}">${formatPoints(tier.required)}</td>
+                    <td>${tier.reward}</td>
+                    <td>${comboText}</td>
+                `;
+                tbody.appendChild(row);
+            });
         }
 
-        // ============== 自动更新检测 ==============
-        let lastETag = '';
-        async function checkForUpdate() {
-            try {
-                const res = await fetch(location.href, { cache: 'no-store' });
-                const etag = res.headers.get('etag') || res.headers.get('last-modified') || '';
-                if (lastETag && etag && etag !== lastETag) {
-                    document.getElementById('updateBanner').style.display = 'block';
-                }
-                if (!lastETag) lastETag = etag;
-            } catch {}
+        // Update mode
+        function updateMode() {
+            mode = document.querySelector('input[name="mode"]:checked').value;
+            pushState();
         }
-        setInterval(checkForUpdate, 3000);
 
-        // ============== 初始化 ==============
-        document.addEventListener("DOMContentLoaded", () => {
-            fullRender();
-        });
+        // Add new goal
+        function addGoal() {
+            const name = prompt('请输入目标名称:');
+            if (!name) return;
+            const val = parseFloat(prompt('请输入目标点数:')) || 0;
+            goals.push({ name, value: val });
+            pushState();
+        }
+
+        // Clear all
+        function clearAll() {
+            if (!confirm('确定全部清零吗？')) return;
+            gifts.forEach(g => quantities[g.id] = 0);
+            highlighted = {};
+            pushState();
+        }
+
+        // Main render
+        function renderAll() {
+            renderGifts();
+            renderTags();
+            renderGoals();
+            renderPeripherals();
+            document.getElementById('grandTotal').textContent = formatPoints(getTotalPoints());
+            
+            // Sync radio buttons
+            document.querySelector(`input[name="mode"][value="${mode}"]`).checked = true;
+        }
+
+        // Start
+        renderAll();
     </script>
 </body>
 </html>
