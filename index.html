@@ -3,7 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>酷酷的蓝比赛专用</title>
+    <title>酷酷的蓝比赛专用 - 点数版</title>
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: "Microsoft YaHei", sans-serif; }
         :root {
@@ -27,7 +30,7 @@
             background: var(--darkest);
             color: var(--text);
             min-height: 100vh;
-            overflow-y: auto; /* ← PAGE SCROLLABLE */
+            overflow-y: auto;
         }
         header {
             background: var(--darker);
@@ -40,7 +43,7 @@
         .header-title { font-size: 1.5rem; color: var(--accent-light); font-weight: bold; text-align: center; }
         main {
             display: flex;
-            flex-wrap: wrap; /* ← WRAP ON SMALL SCREENS */
+            flex-wrap: wrap;
             padding: 20px;
             gap: 24px;
         }
@@ -49,7 +52,7 @@
             border-radius: 16px;
             padding: 24px;
             border: 1px solid var(--dark);
-            flex: 1 1 520px; /* ← RESPONSIVE WIDTH */
+            flex: 1 1 520px;
         }
         .panel-title {
             font-size: 1.3rem;
@@ -95,6 +98,7 @@
         }
         .mark-btn.active { background: var(--yellow); color: #000; }
         .gift-name { flex: 1; font-size: 1rem; display: flex; align-items: center; gap: 4px; white-space: nowrap; }
+        .gift-points { font-size: 0.85rem; color: var(--muted); margin-left: 4px; }
         .emoji { font-size: 1.15rem; }
         .qty-input {
             width: 80px; padding: 8px 6px;
@@ -148,28 +152,6 @@
             color: var(--text); border-radius: 6px; cursor: pointer;
             align-self: flex-start;
         }
-        .strategy-bar { margin-bottom: 16px; display: flex; gap: 24px; align-items: center; flex-wrap: wrap; }
-        .radio-label { display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 1rem; }
-        .filter-section { margin-bottom: 20px; }
-        .filter-label { margin-bottom: 10px; display: block; color: var(--muted); }
-        .multi-select { display: flex; flex-wrap: wrap; gap: 8px; }
-        .tag {
-            padding: 8px 14px; background: var(--dark); border-radius: 20px;
-            cursor: pointer; font-size: 0.95rem;
-            border: 2px solid transparent; transition: all 0.2s; white-space: nowrap;
-        }
-        .tag.selected { background: var(--accent); color: #000; border-color: var(--accent-light); }
-        table { width: 100%; border-collapse: separate; border-spacing: 0 8px; margin-top: 10px; }
-        th { background: var(--dark); color: var(--accent-light); padding: 12px 14px; text-align: left; font-weight: 600; }
-        td { padding: 12px 14px; background: var(--dark-row); }
-        tr td:first-child { border-radius: 8px 0 0 8px; }
-        tr td:last-child { border-radius: 0 8px 8px 0; }
-        td input {
-            width: 100%; padding: 8px 10px;
-            background: var(--darkest); border: 1px solid #2a7a5c;
-            color: var(--text); border-radius: 4px; font-size: 0.95rem;
-        }
-        .gift-combo { line-height: 1.5; }
         .delete-goal-btn {
             background: transparent; border: none; color: var(--muted);
             cursor: pointer; margin-left: 8px; font-size: 1rem;
@@ -179,6 +161,8 @@
             background: var(--accent); color: #000; padding: 6px 12px;
             border-radius: 20px; font-size: 0.85rem; font-weight: bold; z-index: 1000;
         }
+        .sync-indicator.offline { background: var(--yellow); }
+        .sync-indicator.error { background: var(--red); color: white; }
         .update-banner {
             position: fixed; top: 0; left: 0; right: 0;
             background: var(--yellow); color: #000; padding: 10px;
@@ -189,6 +173,7 @@
             background: var(--green); color: white; border: none;
             border-radius: 4px; cursor: pointer; font-weight: bold;
         }
+        .right-panel { display: none; }
     </style>
 </head>
 <body>
@@ -196,191 +181,157 @@
         🆕 New version available!
         <button onclick="location.reload()">Refresh Now</button>
     </div>
-    <div class="sync-indicator" id="syncIndicator">⚡ Live Sync</div>
+    <div class="sync-indicator" id="syncIndicator">⚡ Connecting...</div>
 
     <header>
-        <h1 class="header-title">🏁 酷酷的蓝比赛专用</h1>
+        <h1 class="header-title">🏁 酷酷的蓝比赛专用 — 点数统计</h1>
     </header>
 
     <main>
-        <div class="panel left-panel">
+        <div class="panel left-panel" style="max-width: 800px; margin: 0 auto;">
             <h2 class="panel-title">
                 礼物清单
                 <button class="clear-btn" onclick="clearAllGifts()">🗑️ 一键清空</button>
             </h2>
             <div class="gift-grid" id="giftGrid"></div>
             <div class="total-box">
-                <span>总数</span>
-                <span id="grandTotal">0</span>
+                <span>总点数</span>
+                <span id="grandTotal">0.0</span>
             </div>
             <div class="goals-section">
-                <h3 class="goals-title">目标</h3>
+                <h3 class="goals-title">目标（点数）</h3>
                 <div id="goalsContainer"></div>
                 <button class="add-goal-btn" onclick="addGoalRow()">+ 添加目标</button>
             </div>
         </div>
-
-        <div class="panel right-panel">
-            <h2 class="panel-title">档位周边</h2>
-            <div class="strategy-bar">
-                <label class="radio-label">
-                    <input type="radio" name="strategy" value="fewest" checked onchange="onStrategyChange()">
-                    最少礼物数
-                </label>
-                <label class="radio-label">
-                    <input type="radio" name="strategy" value="mosttypes" onchange="onStrategyChange()">
-                    最多礼物种类
-                </label>
-            </div>
-            <div class="filter-section">
-                <span class="filter-label">包含礼物 (点击选择/取消):</span>
-                <div class="multi-select" id="giftTags"></div>
-            </div>
-            <table>
-                <thead>
-                    <tr>
-                        <th style="width:15%">档位</th>
-                        <th style="width:20%">所需钻石</th>
-                        <th style="width:30%">可获得周边</th>
-                        <th style="width:35%">礼物组合</th>
-                    </tr>
-                </thead>
-                <tbody id="tierBody"></tbody>
-            </table>
-        </div>
     </main>
 
     <script>
-        // ============== DATA ==============
+        // ==================================================
+        // 🔴 PASTE YOUR FIREBASE CONFIG HERE 🔴
+        // ==================================================
+        const firebaseConfig = {
+          apiKey: "AIzaSyDUMKaG-iq6gSiVGnkWK7Aexf6A-6LvrKk",
+          authDomain: "kkdl-856f4.firebaseapp.com",
+          databaseURL: "https://kkdl-856f4.asia-southeast1.firebasedatabase.app",
+          projectId: "kkdl-856f4",
+          storageBucket: "kkdl-856f4.appspot.com",
+          messagingSenderId: "1058958114658",
+          appId: "1:1058958114658:web:c7ff68bc22e3ac5ea7b63b"
+        };
+        // ==================================================
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        const stateRef = db.ref('shared_state');
+
+        // ============== 礼物点数表 ==============
         const gifts = [
-            { name: "兔兔", emoji: "🐰", value: 299 },
-            { name: "箱箱", emoji: "🎁", value: 600 },
-            { name: "车车", emoji: "🚗", value: 1200 },
-            { name: "飞飞", emoji: "✈️", value: 3000 },
-            { name: "船船", emoji: "🚢", value: 6000 },
-            { name: "火箭", emoji: "🚀", value: 10001 },
-            { name: "地雷", emoji: "💫", value: 18888 },
-            { name: "艇艇", emoji: "🛸", value: 20000 },
-            { name: "华华", emoji: "❀", value: 30000 },
-            { name: "10w+", emoji: "💎", value: 100000 }
+            { name: "兔兔", emoji: "🐰", points: 0.3 },
+            { name: "宝箱", emoji: "🎁", points: 0.6 },
+            { name: "跑车", emoji: "🚗", points: 1.2 },
+            { name: "飞机", emoji: "✈️", points: 3.0 },
+            { name: "邮轮", emoji: "🚢", points: 6.0 },
+            { name: "火箭", emoji: "🚀", points: 10.0 },
+            { name: "地雷", emoji: "💫", points: 18.8 },
+            { name: "飞艇", emoji: "🛸", points: 20.0 },
+            { name: "华华", emoji: "❀", points: 30.0 },
+            { name: "10w+", emoji: "💎", points: 100.0 }
         ];
 
         let goals = [
-            { id: 1, name: "爱心手幅", target: 888000 },
-            { id: 2, name: "吧唧", target: 1888000 },
-            { id: 3, name: "眼睛条", target: 2888000 }
+            { id: 1, name: "目标1", target: 500.0 },
+            { id: 2, name: "目标2", target: 1000.0 },
+            { id: 3, name: "目标3", target: 2000.0 }
         ];
         let nextGoalId = 4;
 
         let quantities = {};
         let highlighted = {};
-        let selectedGifts = {};
         gifts.forEach(g => {
             quantities[g.name] = 0;
             highlighted[g.name] = false;
-            selectedGifts[g.name] = true;
         });
 
-        let tiers = [
-            { tier: 10, diamonds: 2990, reward: "" },
-            { tier: 20, diamonds: 5980, reward: "" },
-            { tier: 40, diamonds: 11960, reward: "" },
-            { tier: 66, diamonds: 19734, reward: "" }
-        ];
-
-        // ============== REAL-TIME SYNC ==============
-        const SYNC_KEY = 'gift_calc_state_v2';
-        const channel = new BroadcastChannel('gift_calc_sync');
         let isSyncing = false;
+        let localSaveTimeout = null;
 
-        function saveState() {
-            const state = {
-                quantities, highlighted, selectedGifts, goals, nextGoalId, tiers,
-                _ts: Date.now()
-            };
-            localStorage.setItem(SYNC_KEY, JSON.stringify(state));
-            channel.postMessage({ type: 'STATE_UPDATED', state });
+        // ============== 同步状态 ==============
+        function updateSyncStatus(status, text) {
+            const el = document.getElementById('syncIndicator');
+            el.className = 'sync-indicator ' + (status === 'online' ? '' : status);
+            el.textContent = text;
         }
 
-        function loadState() {
-            const saved = localStorage.getItem(SYNC_KEY);
-            if (!saved) return false;
-            try {
-                const state = JSON.parse(saved);
-                quantities = state.quantities || {};
-                highlighted = state.highlighted || {};
-                selectedGifts = state.selectedGifts || {};
-                goals = state.goals || goals;
-                nextGoalId = state.nextGoalId || nextGoalId;
-                tiers = state.tiers || tiers;
-                return true;
-            } catch { return false; }
-        }
-
-        channel.onmessage = (event) => {
+        function pushStateToFirebase() {
             if (isSyncing) return;
-            if (event.data.type === 'STATE_UPDATED') {
-                isSyncing = true;
-                const s = event.data.state;
-                quantities = s.quantities;
-                highlighted = s.highlighted;
-                selectedGifts = s.selectedGifts;
-                goals = s.goals;
-                nextGoalId = s.nextGoalId;
-                tiers = s.tiers;
-                fullRender();
-                isSyncing = false;
-            }
-        };
+            clearTimeout(localSaveTimeout);
+            localSaveTimeout = setTimeout(() => {
+                const state = {
+                    quantities, highlighted, goals, nextGoalId,
+                    _ts: firebase.database.ServerValue.TIMESTAMP
+                };
+                stateRef.set(state).catch(err => {
+                    console.error('Sync error:', err);
+                    updateSyncStatus('error', '❌ Sync Error');
+                });
+            }, 300);
+        }
 
-        window.addEventListener('storage', (e) => {
-            if (e.key === SYNC_KEY && !isSyncing) {
-                if (loadState()) fullRender();
+        stateRef.on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (!data) {
+                updateSyncStatus('online', '⚡ Live Sync');
+                return;
             }
+            isSyncing = true;
+            try {
+                quantities = data.quantities || quantities;
+                highlighted = data.highlighted || highlighted;
+                goals = data.goals || goals;
+                nextGoalId = data.nextGoalId || nextGoalId;
+                fullRender();
+                updateSyncStatus('online', '⚡ Live Sync');
+            } catch (e) {
+                console.error('Load error:', e);
+            }
+            isSyncing = false;
+        }, (err) => {
+            updateSyncStatus('error', '❌ Disconnected');
         });
 
-        // ============== AUTO-UPDATE CHECKER ==============
-        let lastETag = '';
-        async function checkForUpdate() {
-            try {
-                const res = await fetch(location.href, { cache: 'no-store' });
-                const etag = res.headers.get('etag') || res.headers.get('last-modified') || '';
-                if (lastETag && etag && etag !== lastETag) {
-                    document.getElementById('updateBanner').style.display = 'block';
-                }
-                if (!lastETag) lastETag = etag;
-            } catch {}
-        }
-        setInterval(checkForUpdate, 3000);
+        db.ref('.info/connected').on('value', (snap) => {
+            updateSyncStatus(snap.val() ? 'online' : 'offline', snap.val() ? '⚡ Live Sync' : '⏳ Offline...');
+        });
 
-        // ============== HELPERS ==============
-        function getGrandTotal() {
+        // ============== 计算总点数 ==============
+        function getTotalPoints() {
             let total = 0;
-            gifts.forEach(g => total += g.value * (quantities[g.name] || 0));
+            gifts.forEach(g => {
+                total += g.points * (quantities[g.name] || 0);
+            });
             return total;
         }
 
+        function formatPoints(num) {
+            return num.toFixed(2);
+        }
+
         function updateGrandTotal() {
-            document.getElementById("grandTotal").textContent = getGrandTotal().toLocaleString();
+            document.getElementById("grandTotal").textContent = formatPoints(getTotalPoints());
         }
 
-        function onStrategyChange() {
-            renderTierTable();
-            saveState();
-        }
-
-        // ============== RENDER FUNCTIONS ==============
+        // ============== 渲染 ==============
         function fullRender() {
             renderGiftGrid();
-            renderGiftTags();
-            renderTierTable();
             updateGrandTotal();
-            renderGoals(getGrandTotal());
+            renderGoals(getTotalPoints());
         }
 
         function clearAllGifts() {
             gifts.forEach(g => quantities[g.name] = 0);
-            saveState();
+            pushStateToFirebase();
             fullRender();
         }
 
@@ -392,94 +343,60 @@
                     row.className = `gift-row`;
                     row.id = `row-${gift.name}`;
                     row.innerHTML = `
-                        <button class="mark-btn" id="mark-${gift.name}" data-name="${gift.name}">!</button>
+                        <button class="mark-btn" id="mark-${gift.name}">!</button>
                         <span class="gift-name">
                             <span class="emoji">${gift.emoji}</span>
                             <span>${gift.name}</span>
+                            <span class="gift-points">(${gift.points}点)</span>
                         </span>
                         <input type="number" class="qty-input" id="qty-${gift.name}"
-                               min="0" max="9999" value="${quantities[gift.name] || 0}">
+                               min="0" max="9999">
                         <div class="btn-group">
-                            <button class="btn-round btn-minus" data-name="${gift.name}">−</button>
-                            <button class="btn-round btn-plus" data-name="${gift.name}">+</button>
+                            <button class="btn-round btn-minus">−</button>
+                            <button class="btn-round btn-plus">+</button>
                         </div>
                     `;
                     grid.appendChild(row);
 
-                    // Input handler
                     const input = row.querySelector(`#qty-${gift.name}`);
                     input.addEventListener('input', (e) => {
                         let val = e.target.value;
-                        if (val === '' || val === null) {
-                            quantities[gift.name] = 0;
-                        } else {
-                            let v = parseInt(val);
-                            if (isNaN(v)) v = 0;
-                            v = Math.max(0, Math.min(9999, v));
-                            quantities[gift.name] = v;
-                        }
+                        quantities[gift.name] = val === '' || val === null ? 0 : Math.max(0, Math.min(9999, parseInt(val) || 0));
                         updateGrandTotal();
-                        renderGoals(getGrandTotal());
-                        renderTierTable();
-                        saveState();
+                        renderGoals(getTotalPoints());
+                        pushStateToFirebase();
                     });
 
-                    // +/- buttons
                     row.querySelector('.btn-minus').addEventListener('click', () => {
                         quantities[gift.name] = Math.max(0, (quantities[gift.name] || 0) - 1);
+                        pushStateToFirebase();
                         fullRender();
-                        saveState();
                     });
                     row.querySelector('.btn-plus').addEventListener('click', () => {
                         quantities[gift.name] = Math.min(9999, (quantities[gift.name] || 0) + 1);
+                        pushStateToFirebase();
                         fullRender();
-                        saveState();
                     });
                     row.querySelector('.mark-btn').addEventListener('click', () => {
                         highlighted[gift.name] = !highlighted[gift.name];
+                        pushStateToFirebase();
                         fullRender();
-                        saveState();
                     });
                 });
             }
 
-            // Update values & highlights without re-creating elements
             gifts.forEach(gift => {
                 const row = document.getElementById(`row-${gift.name}`);
                 const markBtn = document.getElementById(`mark-${gift.name}`);
                 const input = document.getElementById(`qty-${gift.name}`);
-                const current = parseInt(input.value) || 0;
                 const targetVal = quantities[gift.name] || 0;
+                const current = parseInt(input.value) || 0;
 
-                if (current !== targetVal) {
+                if (current !== targetVal && document.activeElement !== input) {
                     input.value = targetVal;
                 }
-
-                if (highlighted[gift.name]) {
-                    row.classList.add('highlighted');
-                    markBtn.classList.add('active');
-                } else {
-                    row.classList.remove('highlighted');
-                    markBtn.classList.remove('active');
-                }
-            });
-        }
-
-        function renderGiftTags() {
-            const container = document.getElementById("giftTags");
-            if (!container) return;
-            container.innerHTML = "";
-            gifts.forEach(g => {
-                const tag = document.createElement("span");
-                tag.className = `tag ${selectedGifts[g.name] ? "selected" : ""}`;
-                tag.textContent = `${g.emoji} ${g.name}`;
-                tag.addEventListener('click', () => {
-                    selectedGifts[g.name] = !selectedGifts[g.name];
-                    renderGiftTags();
-                    renderTierTable();
-                    saveState();
-                });
-                container.appendChild(tag);
+                row.classList.toggle('highlighted', highlighted[gift.name]);
+                markBtn.classList.toggle('active', highlighted[gift.name]);
             });
         }
 
@@ -497,170 +414,58 @@
                         ${goals.length > 1 ? `<button class="delete-goal-btn" data-id="${goal.id}">✕</button>` : ""}
                     </span>
                     <span class="goal-target">
-                        <input type="number" value="${goal.target}" data-id="${goal.id}">
+                        <input type="number" step="0.01" value="${goal.target}" data-id="${goal.id}">
                     </span>
                     <span class="goal-diff ${isUnlocked ? "unlocked-text" : "negative"}">
-                        ${isUnlocked ? "已解锁 ✅" : `−${diff.toLocaleString()}`}
+                        ${isUnlocked ? "已解锁 ✅" : `−${formatPoints(diff)}`}
                     </span>
                 `;
                 container.appendChild(row);
             });
 
-            // Attach goal input handlers
             container.querySelectorAll('.goal-name input').forEach(inp => {
                 inp.addEventListener('change', (e) => {
-                    const id = parseInt(e.target.dataset.id);
-                    const g = goals.find(x => x.id === id);
-                    if (g) { g.name = e.target.value; saveState(); }
+                    const g = goals.find(x => x.id === parseInt(e.target.dataset.id));
+                    if (g) { g.name = e.target.value; pushStateToFirebase(); }
                 });
             });
             container.querySelectorAll('.goal-target input').forEach(inp => {
                 inp.addEventListener('change', (e) => {
-                    const id = parseInt(e.target.dataset.id);
-                    const g = goals.find(x => x.id === id);
-                    if (g) { g.target = Math.max(0, parseInt(e.target.value) || 0); saveState(); renderGoals(getGrandTotal()); }
+                    const g = goals.find(x => x.id === parseInt(e.target.dataset.id));
+                    if (g) { g.target = Math.max(0, parseFloat(e.target.value) || 0); pushStateToFirebase(); renderGoals(getTotalPoints()); }
                 });
             });
             container.querySelectorAll('.delete-goal-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const id = parseInt(e.target.dataset.id);
-                    if (goals.length > 1) {
-                        goals = goals.filter(x => x.id !== id);
-                        saveState(); renderGoals(getGrandTotal());
-                    }
+                btn.addEventListener('click', () => {
+                    goals = goals.filter(x => x.id !== parseInt(btn.dataset.id));
+                    pushStateToFirebase(); renderGoals(getTotalPoints());
                 });
             });
         }
 
         function addGoalRow() {
-            goals.push({ id: nextGoalId++, name: "新目标", target: 0 });
-            saveState();
-            renderGoals(getGrandTotal());
+            goals.push({ id: nextGoalId++, name: "新目标", target: 0.0 });
+            pushStateToFirebase();
+            renderGoals(getTotalPoints());
         }
 
-        function getSelectedGiftsList() {
-            return gifts.filter(g => selectedGifts[g.name] !== false);
+        // ============== 自动更新检测 ==============
+        let lastETag = '';
+        async function checkForUpdate() {
+            try {
+                const res = await fetch(location.href, { cache: 'no-store' });
+                const etag = res.headers.get('etag') || res.headers.get('last-modified') || '';
+                if (lastETag && etag && etag !== lastETag) {
+                    document.getElementById('updateBanner').style.display = 'block';
+                }
+                if (!lastETag) lastETag = etag;
+            } catch {}
         }
+        setInterval(checkForUpdate, 3000);
 
-        function findClosestCombo(target, pool, strategy) {
-            if (pool.length === 0) return { items: [], total: 0 };
-
-            if (strategy === "fewest") {
-                const sortedDesc = [...pool].sort((a, b) => b.value - a.value);
-                const covers = pool.filter(g => g.value >= target && g.value - target <= 500);
-                if (covers.length > 0) {
-                    const best = covers.sort((a, b) => a.value - b.value)[0];
-                    return { items: [{ gift: best, count: 1 }], total: best.value };
-                }
-
-                let remaining = target;
-                const items = [];
-                for (const g of sortedDesc) {
-                    if (remaining <= 0) break;
-                    if (g.value <= remaining) {
-                        const n = Math.floor(remaining / g.value);
-                        items.push({ gift: g, count: n });
-                        remaining -= n * g.value;
-                    }
-                }
-
-                if (remaining <= 0) {
-                    return { items, total: target - remaining };
-                }
-
-                const coverRem = pool.filter(g => g.value >= remaining).sort((a, b) => a.value - b.value)[0];
-                if (coverRem) {
-                    items.push({ gift: coverRem, count: 1 });
-                    return { items, total: target - remaining + coverRem.value };
-                }
-
-                const fullCover = pool.filter(g => g.value >= target).sort((a, b) => a.value - b.value)[0];
-                if (fullCover) {
-                    return { items: [{ gift: fullCover, count: 1 }], total: fullCover.value };
-                }
-
-                const largest = sortedDesc[0];
-                const need = Math.ceil(target / largest.value);
-                return { items: [{ gift: largest, count: need }], total: need * largest.value };
-            } else {
-                const sortedAsc = [...pool].sort((a, b) => a.value - b.value);
-                let remaining = target;
-                const items = [];
-                for (const g of sortedAsc) {
-                    if (remaining >= g.value) {
-                        items.push({ gift: g, count: 1 });
-                        remaining -= g.value;
-                    }
-                }
-                if (remaining > 0) {
-                    const smallest = sortedAsc[0];
-                    const need = Math.ceil(remaining / smallest.value);
-                    const existing = items.find(i => i.gift.name === smallest.name);
-                    if (existing) existing.count += need;
-                    else items.push({ gift: smallest, count: need });
-                }
-                const totalVal = items.reduce((sum, i) => sum + i.gift.value * i.count, 0);
-                return { items, total: totalVal };
-            }
-        }
-
-        function buildCombo(target, strategy) {
-            if (target <= 0) return "—";
-            const pool = getSelectedGiftsList();
-            if (pool.length === 0) return "请先选择礼物";
-
-            const result = findClosestCombo(target, pool, strategy);
-            const grouped = {};
-            result.items.forEach(it => {
-                grouped[it.gift.emoji] = (grouped[it.gift.emoji] || 0) + it.count;
-            });
-            return Object.entries(grouped).map(([emoji, n]) => `${n}${emoji}`).join(", ");
-        }
-
-        function renderTierTable() {
-            const strategy = document.querySelector('input[name="strategy"]:checked')?.value || "fewest";
-            const tbody = document.getElementById("tierBody");
-            if (!tbody) return;
-            tbody.innerHTML = "";
-
-            tiers.forEach((tier, idx) => {
-                const row = document.createElement("tr");
-                row.innerHTML = `
-                    <td><input type="number" value="${tier.tier}" data-idx="${idx}"></td>
-                    <td><input type="number" value="${tier.diamonds}" data-idx="${idx}"></td>
-                    <td><input type="text" value="${tier.reward}" placeholder="如：徽章、立牌等" data-idx="${idx}"></td>
-                    <td class="gift-combo">${buildCombo(tier.diamonds, strategy)}</td>
-                `;
-                tbody.appendChild(row);
-            });
-
-            tbody.querySelectorAll('input').forEach(inp => {
-                inp.addEventListener('change', (e) => {
-                    const idx = parseInt(e.target.dataset.idx);
-                    if (e.target.type === 'number') {
-                        tiers[idx][e.target.placeholder ? 'reward' : (e.target.value > 100 ? 'diamonds' : 'tier')] =
-                            e.target.value === '' ? 0 : parseFloat(e.target.value);
-                    } else {
-                        tiers[idx].reward = e.target.value;
-                    }
-                    renderTierTable();
-                    saveState();
-                });
-            });
-        }
-
-        // ============== INIT ==============
+        // ============== 初始化 ==============
         document.addEventListener("DOMContentLoaded", () => {
-            if (!loadState()) {
-                // First visit — initialize defaults
-                gifts.forEach(g => {
-                    quantities[g.name] = 0;
-                    highlighted[g.name] = false;
-                    selectedGifts[g.name] = true;
-                });
-            }
             fullRender();
-            saveState();
         });
     </script>
 </body>
